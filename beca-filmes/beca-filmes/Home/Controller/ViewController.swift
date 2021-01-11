@@ -8,15 +8,60 @@
 
 import UIKit
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate {
+    
+    // MARK: - Outlets
+    
+    @IBOutlet weak var collectionFilmes: UICollectionView!
+    
+    // MARK: - Variáveis
+    
+    var listaDeTendecias: Array<Dictionary<String, Any>> = []
+    
+    // MARK: - LyfeCicle
 
     override func viewDidLoad() {
         super.viewDidLoad()
         self.carregaHome()
+        collectionFilmes.dataSource = self
+        collectionFilmes.delegate = self
     }
     
     func carregaHome() {
-        FilmesAPI().listaTendencias()
+        FilmesAPI().listaTendencias { (response) in
+            self.listaDeTendecias = response
+            self.collectionFilmes.reloadData()
+        }
+    }
+
+    // MARK: - CollectionViewDataSource
+    
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return self.listaDeTendecias.count
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let celula = collectionView.dequeueReusableCell(withReuseIdentifier: "celulaFilme", for: indexPath) as! TendenciasCollectionViewCell
+        
+        celula.configuraCelula(Filmes(dicionarioDeFilme: listaDeTendecias[indexPath.row]))
+        
+        return celula
+    }
+    
+    // MARK: - CollectionViewDelegate
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let filmeSelecionado = listaDeTendecias[indexPath.item]
+        guard let idFilmeSelecionado = filmeSelecionado["id"] as? Int else { return }
+        
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        let controller = storyboard.instantiateViewController(withIdentifier: "detalhes") as! DetalhesViewController
+        
+        FilmesAPI().buscaDetalhes(idFilme: idFilmeSelecionado) { (response) in
+            let detalhesFilmeSelecionado = Filmes(dicionarioDeFilme: response)
+            controller.filmeSelecionado = detalhesFilmeSelecionado
+            self.present(controller, animated: true, completion: nil)
+        }
     }
 
 }
